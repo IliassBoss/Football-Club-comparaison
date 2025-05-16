@@ -1,0 +1,79 @@
+import pickle
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Chemin vers le fichier pickle global des stats d'équipes
+pkl_path = r'C:\Users\User\Documents\Cours\nosql\data\fbref_data\global_team_stats_fbref.pkl'
+
+# Chargement des données
+with open(pkl_path, 'rb') as f:
+    global_team_stats = pickle.load(f)
+
+# Conversion en DataFrame et transposition
+df = pd.DataFrame(global_team_stats).transpose()
+
+# Renommer les colonnes en saison format 'YYYY-YYYY+1'
+df.columns = [f'{int(col)}-{int(col)+1}' for col in df.columns]
+
+def compare_teams(team1, team2, season):
+    # Vérification que la saison existe
+    if season not in df.columns:
+        print(f"Saison non trouvée : {season}")
+        print("Saisons disponibles :", df.columns.tolist())
+        return
+
+    # Afficher les équipes disponibles pour la saison
+    available_teams = list(df[season].keys())
+    print("Equipes disponibles :", available_teams)
+
+    # Vérification que les équipes sont dans la liste
+    if team1 not in available_teams or team2 not in available_teams:
+        print("Nom d’équipe non trouvé. Vérifiez les noms EXACTS.")
+        print("Equipes disponibles :", available_teams)
+        return
+
+    # Récupérer les stats des équipes
+    stats1 = df[season].get(team1)
+    stats2 = df[season].get(team2)
+
+    # Extraire les clés des stats
+    stat_keys = list(stats1.keys())
+
+    # Extraire les valeurs numériques pour chaque stat (ou 0 si non convertible)
+    def get_values(stats):
+        vals = []
+        for k in stat_keys:
+            try:
+                val = float(stats[k])
+            except (ValueError, TypeError):
+                val = 0
+            vals.append(val)
+        return vals
+
+    values1 = get_values(stats1)
+    values2 = get_values(stats2)
+
+    # Préparer les données pour un graphique radar
+    angles = np.linspace(0, 2 * np.pi, len(stat_keys), endpoint=False).tolist()
+    values1 += values1[:1]  # pour fermer le graphique
+    values2 += values2[:1]
+    angles += angles[:1]
+
+    # Création du plot radar
+    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+    ax.plot(angles, values1, label=team1, color='blue')
+    ax.fill(angles, values1, alpha=0.25, color='blue')
+    ax.plot(angles, values2, label=team2, color='red')
+    ax.fill(angles, values2, alpha=0.25, color='red')
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(stat_keys, fontsize=9)
+    ax.set_title(f'Comparaison {team1} vs {team2} ({season})', fontsize=14)
+    ax.legend(loc='upper right')
+
+    plt.tight_layout()
+    plt.show()
+
+# Exemple d'appel (à remplacer par les équipes et saison souhaitées)
+compare_teams('Manchester City', 'Chelsea', '2021-2022')

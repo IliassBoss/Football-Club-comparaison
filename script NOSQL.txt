@@ -1,0 +1,66 @@
+import pickle
+import zlib
+import pandas as pd
+import os
+
+# Chemin de base du projet
+project_root = os.path.dirname(__file__)
+data_path = os.path.join(project_root, 'data')
+
+# Chargement des stats joueurs compressées et fusion des deux fichiers
+with open(os.path.join(data_path, 'fbref_data', 'compressed_player_stats_fbref_1.bin'), 'rb') as f1, \
+     open(os.path.join(data_path, 'fbref_data', 'compressed_player_stats_fbref_2.bin'), 'rb') as f2:
+    player_stats_fbref = pickle.loads(zlib.decompress(f1.read()))
+    player_stats_fbref.update(pickle.loads(zlib.decompress(f2.read())))
+
+# Conversion en DataFrame et tri des colonnes dans l'ordre décroissant
+player_stats_fbref = pd.DataFrame(player_stats_fbref).transpose()
+player_stats_fbref = player_stats_fbref.sort_index(axis=1, ascending=False)
+
+def change_minutes_type(entry):
+    """Numérise l'entrée associée aux minutes jouées."""
+    try:
+        entry['minutes'] = float(entry['minutes'].replace(',', ''))
+        return entry
+    except:
+        return entry
+
+# Détection des valeurs manquantes
+na_player_stats_fbref = player_stats_fbref.isna()
+player_stats_fbref = player_stats_fbref.map(change_minutes_type)
+
+# Chargement des autres données
+with open(os.path.join(data_path, 'fbref_data', 'teams_fbref.pkl'), 'rb') as f:
+    teams_fbref = pickle.load(f)
+
+glossary = pd.read_csv(os.path.join(data_path, 'fbref_data', 'Glossaire_FBREF.csv'))
+
+player_stats_tm = pd.DataFrame(
+    pickle.load(open(os.path.join(data_path, 'tm_data', 'player_stats_tm.pkl'), 'rb'))
+).transpose()
+
+transfer_history = pickle.load(open(os.path.join(data_path, 'tm_data', 'transfer_history.pkl'), 'rb'))
+
+player_ratings = pd.read_csv(os.path.join(data_path, 'sf_data', 'player_ratings.csv'), index_col=0)
+
+global_team_stats_fbref = pd.DataFrame(
+    pickle.load(open(os.path.join(data_path, 'fbref_data', 'global_team_stats_fbref.pkl'), 'rb'))
+).transpose()
+
+# Renommage des colonnes
+global_team_stats_fbref.columns = [f'{s}-{s+1}' for s in global_team_stats_fbref.columns]
+na_global_team_stats = global_team_stats_fbref.isna()
+
+# Fonction de conversion CSV -> JSON
+def convert_csvs_to_json(folder):
+    for root, _, files in os.walk(folder):
+        for file in files:
+            if file.endswith('.csv'):
+                csv_path = os.path.join(root, file)
+                json_path = os.path.splitext(csv_path)[0] + '.json'
+
+                df = pd.read_csv(csv_path)
+                df.to_json(json_path, orient='records', force_ascii=False, indent=2)
+                print(f'Converti : {csv_path} -> {json_path}')
+
+convert_csvs_to_json(data_path)
