@@ -36,4 +36,3 @@ Ce projet a permis de mettre en pratique les concepts de bases de données NoSQL
 
 ![image](https://github.com/user-attachments/assets/804642b3-813a-4c46-a8d8-107632a5714a)
 
-![Uploading image.png…]()
